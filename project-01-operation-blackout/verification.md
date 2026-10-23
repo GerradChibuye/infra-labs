@@ -63,20 +63,18 @@ Port security was applied to the four departmental access ports with sticky MAC 
 
 ## 8. Evidence
 
-Place screenshots in this directory and reference their actual filenames here. Useful evidence includes:
+Useful evidence includes:
 
-- DHCP address information from the four clients.
 - Successful inter-VLAN and server pings.
-- `show etherchannel summary` output.
+- <img width="1361" height="734" alt="03-inter-vlan-connectivity" src="https://github.com/user-attachments/assets/61c52ca9-4ae5-4c10-8a80-9c5cb0ad9aec" />
 - EtherChannel status during a member-link interruption.
-- `show spanning-tree vlan 10` output.
+- <img width="1361" height="734" alt="05-etherchannel-failure" src="https://github.com/user-attachments/assets/360990f1-3c8d-46d5-a7d2-76938c20d4c9" />
 - STP root verification for the remaining VLANs.
-- `show interfaces trunk` output.
+- <img width="1361" height="734" alt="06-stp-root-bridge" src="https://github.com/user-attachments/assets/87aca8e0-8516-41a1-a766-0aecf7b7fda2" />
 - Successful SSH management access.
-- `show port-security` or `show port-security interface` output.
+- <img width="1361" height="734" alt="07-ssh" src="https://github.com/user-attachments/assets/4924c5b9-ad88-4629-b0fd-3d0ca1cb1fc9" />
 - The corrected VLAN 20 trunk configuration.
-
-Do not claim a screenshot exists unless it has actually been uploaded.
+<img width="1361" height="734" alt="02-vlan-and-trunks" src="https://github.com/user-attachments/assets/85cadf7d-84ce-4c1f-9c55-459a3261a367" />
 
 ## 9. Conclusion
 
