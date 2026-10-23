@@ -1,5 +1,8 @@
 # Operation Blackout — Enterprise Campus Network
 
+<img width="1388" height="697" alt="topology-01" src="https://github.com/user-attachments/assets/0887463b-6df7-4f80-982a-f6d5f09f69b2" />
+
+
 ## Project Overview
 
 Operation Blackout is a Cisco Packet Tracer enterprise campus network designed to demonstrate segmented departmental networks, inter-VLAN routing, centralized DHCP, resilient switching, secure device management, and Layer 2 security controls.
