@@ -1,0 +1,8 @@
+# Keep unrelated archives out of this repository
+gta legal services.zip
+
+# Temporary and backup files
+*~
+*.bak
+*.tmp
+.DS_Store
