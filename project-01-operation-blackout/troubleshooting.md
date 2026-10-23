@@ -1,36 +1,38 @@
-# Troubleshooting Record
+# Operation Blackout — Troubleshooting Case Study
 
-## Incident: VLAN 20 traffic did not cross the core-to-access EtherChannel
+## Incident: VLAN 20 Connectivity Failure
 
-### Symptom
+### 1. Symptom
 
-PC0 in VLAN 10 could reach some remote VLANs and the server, but PC0 could not ping PC1 in VLAN 20. PC1 could ping its own gateway, while the router could not successfully ping PC1.
+PC0 in VLAN 10 could not successfully ping PC1 in VLAN 20. Other connectivity tests from PC0 were working.
 
-### Investigation
+This suggested that the problem was not necessarily a complete router or network outage. The investigation focused on the path required for communication between VLAN 10 and VLAN 20.
 
-The investigation checked the relevant layers rather than assuming that a failed ping meant routing was broken:
+### 2. Investigation
 
-1. Verified PC1's address and VLAN 20 gateway.
-2. Checked the PC1 access port and confirmed it was up in VLAN 20.
-3. Checked the router's VLAN 20 subinterface and connected route.
-4. Checked ARP/MAC learning and the EtherChannel state.
-5. Inspected the trunk VLAN allow-list on SW1.
+The switches' trunk configuration was inspected using:
 
-The EtherChannel was operational, but SW1's `Port-channel1` allowed VLAN list contained a typo:
+```text
+show interfaces trunk
+```
+
+The allowed VLAN list on SW1-CORE's Port-channel1 contained:
 
 ```text
 10,29-30,40,50,99
 ```
 
-That list excluded VLAN 20.
+VLAN 20 was missing from the list. Because PC1's traffic traversed the EtherChannel trunk, VLAN 20 traffic could not pass across that link as intended.
 
-### Root cause
+### 3. Root Cause
 
-The logical trunk did not permit VLAN 20 traffic between SW1-CORE and SW2-ACCESS. Having VLAN 20 configured on the switches and router was not sufficient: the trunk's allowed list also had to carry it.
+The allowed VLAN list on Port-channel1 incorrectly permitted VLANs 29 and 30 rather than VLANs 20 and 30.
 
-### Correction
+This was a Layer 2 trunk configuration fault, not an IP addressing error on PC0 or PC1.
 
-On SW1-CORE:
+### 4. Corrective Action
+
+On SW1-CORE, the Port-channel1 allowed VLAN list was corrected:
 
 ```text
 configure terminal
@@ -39,36 +41,28 @@ interface port-channel 1
 end
 ```
 
-### Verification
+The corresponding trunk configuration on the peer switch was also checked.
 
-The operator confirmed that VLAN 20 appeared in the allowed, active and forwarding VLAN list on Po1 and that connectivity was restored.
+### 5. Verification
 
-### Lesson learned
+After the correction:
 
-Troubleshoot VLAN failures across multiple layers: endpoint addressing, access-port VLAN, trunk state and allowed VLANs, Layer 2 MAC learning, router subinterface, and IP routing. An interface can be up while a specific VLAN is silently excluded.
+- PC0 could successfully communicate with PC1.
+- Previously working connectivity to PC2, PC3, Server0, and switch management addresses remained available.
+- The allowed VLAN list matched the intended VLAN plan.
 
----
+### 6. Lessons Learned
 
-## Controlled test: EtherChannel member failure
+1. A device can communicate with some destinations while failing to reach another VLAN because trunk policies may permit only a subset of VLANs.
+2. `show interfaces trunk` is useful for verifying trunk status, encapsulation, and allowed VLAN membership.
+3. The allowed VLAN list should be checked at both ends of a trunk or EtherChannel.
+4. After a correction, verify both the affected flow and existing working paths to detect regressions.
+5. VLAN identifiers must be checked carefully. A small typing error can create a network fault that resembles a routing problem.
 
-### Procedure
+## Additional Resilience Test: EtherChannel Member Failure
 
-1. Save the known-good configuration and Packet Tracer file.
-2. Disconnect only the SW1 `Fa0/5` ↔ SW2 `Fa0/4` cable.
-3. Check `show etherchannel summary` on both switches.
-4. Check `show interfaces port-channel 1` on SW1.
-5. Ping PC1 and Server0 from PC0.
-6. Restore the same cable.
-7. Confirm both physical interfaces are bundled again.
+A separate test disconnected one physical member of the LACP EtherChannel between SW1-CORE and SW2-ACCESS.
 
-### Observed state during failure
+Port-channel1 remained operational through the surviving member. After the disconnected link was restored, both physical links were bundled again.
 
-- SW1: `Po1(SU)`, `Fa0/2(P)`, `Fa0/5(D)`.
-- SW2: `Po1(SU)`, `Fa0/1(P)`, `Fa0/4(D)`.
-- SW1 reported Port-channel1 up/up, with Fa0/2 as the remaining member.
-
-The operator confirmed that connectivity worked. The cable was restored after the test.
-
-### Lesson learned
-
-LACP EtherChannel provides link redundancy by treating multiple physical links as one logical link. The remaining member can keep the logical bundle operational after one member fails. This does not imply protection against every failure type; both members still share the same switches and logical bundle.
+This test demonstrates the benefit of link aggregation while also highlighting that EtherChannel does not protect against every possible device or path failure.
