@@ -1,157 +1,152 @@
 # Operation Blackout — Enterprise Campus Network
 
-**Project 01 | Networking Infrastructure Labs**
+## Project Overview
 
-Operation Blackout is a Cisco Packet Tracer enterprise campus network built for a fictional organization, Blackout Technologies. The lab demonstrates VLAN-based segmentation, IPv4 subnetting, router-on-a-stick inter-VLAN routing, DHCP, Layer 2 trunking, LACP EtherChannel, Spanning Tree Protocol (STP), SSH management, and access-port security.
+Operation Blackout is a Cisco Packet Tracer enterprise campus network designed to demonstrate segmented departmental networks, inter-VLAN routing, centralized DHCP, resilient switching, secure device management, and Layer 2 security controls.
 
-> **Status:** Core implementation and reported final verification complete. Packet Tracer screenshots, raw command outputs, and the `.pkt` lab file should be added before treating this repository as a fully evidenced portfolio artifact.
+The project was built and tested in Cisco Packet Tracer. Its primary objective is to demonstrate how an enterprise LAN can be designed, configured, verified, and troubleshot using practical networking techniques.
 
 ## Objectives
 
-- Segment departments using VLANs and IPv4 subnets.
-- Route between VLANs through 802.1Q router subinterfaces.
-- Provide DHCP to client VLANs and static addressing for infrastructure.
-- Aggregate parallel switch links using LACP.
-- Make the core switch the intended STP root bridge.
-- Restrict trunk VLAN propagation and use SSH instead of Telnet.
-- Limit access-port MAC learning and shut down confirmed unused ports.
-- Test connectivity, a physical EtherChannel member failure, and a real VLAN trunking fault.
+- Design an enterprise campus topology using a router, a core switch, and access switches.
+- Segment departments and services using VLANs.
+- Implement inter-VLAN routing using router-on-a-stick.
+- Configure DHCP for departmental clients.
+- Configure an LACP EtherChannel between switches.
+- Apply Spanning Tree Protocol root-bridge selection.
+- Restrict trunk links to the VLANs required by the design.
+- Configure SSH for switch management.
+- Apply switch port security to end-user access ports.
+- Configure management SVIs for switch administration.
+- Verify connectivity and investigate a VLAN-related trunking fault.
 
 ## Topology
 
-```mermaid
-flowchart TB
-    R1["R1-BLACKOUT<br/>Cisco 2911<br/>Router-on-a-stick"]
-    CORE["SW1-CORE<br/>Cisco 2960<br/>Intended STP root"]
-    SW2["SW2-ACCESS<br/>Cisco 2960"]
-    SW3["SW3-ACCESS<br/>Cisco 2960"]
-    SERVER["Server0<br/>192.168.11.10/27"]
-    PC0["PC0 — ADMIN<br/>DHCP / VLAN 10"]
-    PC1["PC1 — FINANCE<br/>DHCP / VLAN 20"]
-    PC2["PC2 — IT<br/>DHCP / VLAN 30"]
-    PC3["PC3 — STAFF<br/>DHCP / VLAN 40"]
+The network consists of:
 
-    R1 ---|"G0/0 ↔ Fa0/1 trunk"| CORE
-    CORE ---|"Po1: Fa0/2 + Fa0/5 ↔ Fa0/1 + Fa0/4"| SW2
-    CORE ---|"Fa0/3 ↔ Fa0/1 trunk"| SW3
-    CORE ---|"Fa0/4 access VLAN 50"| SERVER
-    SW2 ---|"Fa0/2 access VLAN 10"| PC0
-    SW2 ---|"Fa0/3 access VLAN 20"| PC1
-    SW3 ---|"Fa0/2 access VLAN 30"| PC2
-    SW3 ---|"Fa0/3 access VLAN 40"| PC3
-```
+- **R1-BLACKOUT:** Router providing inter-VLAN routing and DHCP.
+- **SW1-CORE:** Core switch providing VLAN trunking, EtherChannel aggregation, and the intended STP root role.
+- **SW2-ACCESS:** Access switch connecting the Administration and Finance clients.
+- **SW3-ACCESS:** Access switch connecting the IT and Staff clients.
+- **PC0–PC3:** Four departmental end-user devices.
+- **Server0:** Server in the dedicated Servers VLAN.
 
-The two parallel SW1–SW2 physical links form one logical Layer 2 EtherChannel, `Port-channel1`. STP sees the bundle as a logical port.
+The router connects to SW1-CORE using a trunk link. SW1-CORE connects to SW2-ACCESS through an LACP EtherChannel and to SW3-ACCESS through a trunk link.
 
-## VLAN and IPv4 plan
+See [Topology](topology.md) for the logical layout and [Addressing Plan](addressing-plan.md) for the VLAN and IP allocation details.
 
-| VLAN | Name | Network | Default gateway | Use |
-|---:|---|---|---|---|
-| 10 | ADMIN | `192.168.10.0/26` | `192.168.10.1` | PC0 |
-| 20 | FINANCE | `192.168.10.64/26` | `192.168.10.65` | PC1 |
-| 30 | IT | `192.168.10.128/26` | `192.168.10.129` | PC2 |
-| 40 | STAFF | `192.168.10.192/26` | `192.168.10.193` | PC3 |
-| 50 | SERVERS | `192.168.11.0/27` | `192.168.11.1` | Server0 |
-| 99 | MANAGEMENT | `192.168.11.32/27` | `192.168.11.33` | Switch management SVIs |
+## VLAN and IP Addressing
 
-### Known endpoint addresses
+| VLAN | Name | Subnet | Default Gateway |
+|---:|---|---|---|
+| 10 | ADMIN | `192.168.10.0/26` | `192.168.10.1` |
+| 20 | FINANCE | `192.168.10.64/26` | `192.168.10.65` |
+| 30 | IT | `192.168.10.128/26` | `192.168.10.129` |
+| 40 | STAFF | `192.168.10.192/26` | `192.168.10.193` |
+| 50 | SERVERS | `192.168.11.0/27` | `192.168.11.1` |
+| 99 | MANAGEMENT | `192.168.11.32/27` | `192.168.11.33` |
 
-| Device | VLAN | Address | Assignment |
-|---|---:|---|---|
-| PC0 | 10 | `192.168.10.11` | DHCP |
-| PC1 | 20 | `192.168.10.75` | DHCP |
-| PC2 | 30 | `192.168.10.139` | DHCP |
-| PC3 | 40 | `192.168.10.203` | DHCP |
-| Server0 | 50 | `192.168.11.10/27` | Static |
-| SW1-CORE | 99 | `192.168.11.34/27` | Static SVI |
-| SW2-ACCESS | 99 | `192.168.11.35/27` | Static SVI |
-| SW3-ACCESS | 99 | `192.168.11.36/27` | Static SVI |
+Departmental clients in VLANs 10, 20, 30, and 40 receive IPv4 configuration through DHCP. The server and switch management interfaces use statically assigned addresses.
 
-The DHCP pools cover VLANs 10, 20, 30 and 40, with `.1` through `.10` excluded in each `/26` subnet. Record the exact DHCP pool and exclusion commands from the saved device configuration rather than reconstructing them from memory.
+## Key Implementations
 
-## Main implementation features
+### 1. VLAN Segmentation
 
-- **VLANs:** VLANs 10, 20, 30, 40, 50 and 99 are created on the three switches.
-- **Inter-VLAN routing:** R1-BLACKOUT uses subinterfaces on `G0/0` with 802.1Q encapsulation and the gateway addresses listed above.
-- **DHCP:** Router DHCP pools serve the four user VLANs.
-- **Trunking:** Required VLANs are explicitly allowed on the router-facing and SW1–SW3 trunks; the SW1–SW2 Port-channel trunk allows `10,20,30,40,50,99`.
-- **EtherChannel:** LACP bundles SW1 `Fa0/2` and `Fa0/5` with SW2 `Fa0/1` and `Fa0/4`.
-- **STP:** SW1-CORE was configured as root primary for VLANs `10,20,30,40,50,99`. VLAN 10 root election was directly inspected on all three switches.
-- **Management:** Switch SVIs are in VLAN 99; SSH is configured on all three switches.
-- **Port security:** The four PC-facing ports use one maximum secure MAC, sticky learning, and `restrict` violation mode.
-- **Unused ports:** Confirmed unused access ports were shut down. Port inventory should be revisited if the topology changes.
+Six VLANs separate the departmental, server, and management traffic. This creates distinct Layer 2 broadcast domains and provides a foundation for applying network policies.
 
-## Verification summary
+### 2. Inter-VLAN Routing
 
-The operator reports that the final checklist passed:
+Router-on-a-stick is implemented on R1-BLACKOUT using 802.1Q subinterfaces. Each subinterface provides the default gateway for its corresponding VLAN.
 
-- PC0 can ping PC1, PC2, PC3 and Server0.
-- PC0 can reach all three switch management addresses.
-- EtherChannel Po1 is up and both members are bundled after the failure test was restored.
-- SW1-CORE is the intended STP root for the six project VLANs.
-- SSH works on all three switches.
-- Port security is enabled on all four PC-facing access ports.
-- Confirmed unused ports have been shut down.
-- Configurations have been saved.
+### 3. DHCP
 
-Add actual screenshots or pasted outputs to `evidence/` so reviewers can independently inspect this result. The directly captured STP output in the working notes was for VLAN 10; capture the remaining VLANs if you want evidence for the all-six-VLAN claim.
+The router provides DHCP pools for the four departmental VLANs. Gateway addresses and reserved ranges are excluded from dynamic allocation.
 
-## Troubleshooting case: VLAN 20 excluded from EtherChannel trunk
+### 4. LACP EtherChannel
 
-**Symptom:** PC0 could reach several endpoints, but could not reach PC1 in VLAN 20. PC1 could reach its own gateway, but the router could not successfully ping PC1.
+SW1-CORE and SW2-ACCESS use LACP to bundle two physical links into Port-channel1. The bundle provides increased aggregate link capacity and continued connectivity if one member link fails, provided the remaining member is operational.
 
-**Investigation:** The PC's access port was in VLAN 20 and up/up. The router had a VLAN 20 subinterface and the EtherChannel was up. The SW1 trunk output exposed an allowed VLAN typo: `10,29-30,40,50,99`, which excluded VLAN 20.
+### 5. Spanning Tree Protocol
 
-**Root cause:** VLAN 20 traffic was not permitted across the SW1–SW2 logical trunk.
+PVST is enabled. SW1-CORE is configured with a preferred root-bridge priority for VLANs 10, 20, 30, 40, 50, and 99.
 
-**Correction:**
-```text
-interface port-channel 1
- switchport trunk allowed vlan 10,20,30,40,50,99
-```
+### 6. Trunk VLAN Restrictions
 
-**Verification:** VLAN 20 was shown as allowed, active, and forwarding on the Port-channel, and the operator confirmed connectivity was restored.
+Trunk links and Port-channel1 are configured to carry the required VLANs: 10, 20, 30, 40, 50, and 99.
 
-This is a useful operational lesson: an interface can be up and a VLAN can exist on switches while an incorrect trunk allow-list still prevents that VLAN from crossing the link.
+### 7. SSH Management
 
-## EtherChannel member-failure test
+SSH version 2 and local user authentication are configured on the switches. The switch VTY lines are configured to accept SSH rather than Telnet.
 
-One physical member cable, SW1 `Fa0/5` to SW2 `Fa0/4`, was disconnected for a controlled test. The captured status showed:
+### 8. Access-Port Security
 
-- SW1: `Po1(SU)`, `Fa0/2(P)`, `Fa0/5(D)`
-- SW2: `Po1(SU)`, `Fa0/1(P)`, `Fa0/4(D)`
-- `show interfaces port-channel 1` reported the logical interface up/up with `Fa0/2` as its remaining member.
+Port security is applied to the four departmental end-user ports using sticky MAC learning and the `restrict` violation action. The intended limit is one learned MAC address per protected port.
 
-The operator confirmed end-to-end connectivity continued to work. The cable was then restored and both members returned to the bundle. Attach before/after screenshots or command outputs in `evidence/`.
+### 9. Unused-Port Administration
 
-## Repository structure
+Selected unused access ports are administratively shut down. The exact status of unused interfaces varies by switch and is documented in the configuration references where applicable.
 
-```text
-project-01-operation-blackout/
-├── README.md
-├── topology.md
-├── addressing-plan.md
-├── verification.md
-├── troubleshooting.md
-├── configs/
-│   └── configuration-capture-guide.md
-└── evidence/
-    └── README.md
-```
+## Verification and Troubleshooting
 
-## Scope and limitations
+The lab was tested for:
 
-This is a simulated campus network, not a production deployment. No Internet uplink, firewall, wireless LAN, IPv6 implementation, or external DNS service is claimed. Security controls are introductory and should not be interpreted as a complete production hardening baseline. Do not commit passwords, private keys, or other secrets.
+- DHCP address allocation to departmental clients.
+- Inter-VLAN connectivity.
+- Reachability of Server0.
+- Reachability of switch management addresses.
+- EtherChannel formation and recovery after a member-link interruption.
+- STP root-bridge selection.
+- Trunk VLAN membership.
+- SSH access to switches.
+- Port-security status on protected access ports.
 
-## Reproduce the lab
+A significant fault occurred when VLAN 20 was accidentally omitted from the allowed VLAN list on Port-channel1. This prevented the affected cross-switch communication. Correcting the allowed VLAN list restored connectivity.
 
-1. Open the saved Packet Tracer `.pkt` file using a compatible Packet Tracer version.
-2. Inspect the topology and VLAN/IP plan.
-3. Review `configs/configuration-capture-guide.md` and capture the relevant `show` outputs.
-4. Run the tests in `verification.md`.
-5. Review `troubleshooting.md` and reproduce the VLAN allow-list fault only after saving a known-good copy.
-6. Save the known-good `.pkt` file and device configurations.
+See [Verification](verification.md) for the test results and [Troubleshooting](troubleshooting.md) for the fault investigation.
 
-## Learning outcomes
+## Documentation and Configuration References
 
-This project practices VLAN design, IPv4 subnetting, router-on-a-stick, DHCP, trunk troubleshooting, LACP, STP root election, SSH management, port security, controlled failure testing, and technical documentation.
+- [Addressing Plan](addressing-plan.md)
+- [Topology](topology.md)
+- [Verification Results](verification.md)
+- [Troubleshooting Case Study](troubleshooting.md)
+- [Configuration Capture Guide](configs/configuration-capture-guide.md)
+- [Router Configuration Reference](configs/R1-BLACKOUT.md)
+- [Core Switch Configuration Reference](configs/SW1-CORE.md)
+- [Access Switch 2 Configuration Reference](configs/SW2-ACCESS.md)
+- [Access Switch 3 Configuration Reference](configs/SW3-ACCESS.md)
+- [Evidence Directory](evidence/README.md)
+
+The configuration references document the important settings and interface roles. They are sanitized documentation, not replacements for the original Packet Tracer `.pkt` file.
+
+## Skills Demonstrated
+
+- IPv4 subnetting and VLSM
+- VLAN configuration and segmentation
+- IEEE 802.1Q trunking
+- Router-on-a-stick
+- DHCP configuration
+- LACP EtherChannel
+- PVST root-bridge selection
+- SSH device administration
+- Switch port security
+- Network troubleshooting and verification
+- Technical documentation and version control
+
+## Project Files
+
+The Packet Tracer topology is stored in `operation-blackout-campus.pkt`. Open it with Cisco Packet Tracer to inspect the topology and reproduce the lab.
+
+## Scope and Limitations
+
+This is a simulated campus network. The project demonstrates configuration and verification in Packet Tracer; it does not, by itself, establish production deployment, measured throughput, or physical hardware performance.
+
+The lab does not currently claim implementation of dynamic routing, redundant routers, a dedicated firewall, or a production monitoring system.
+
+## Author
+
+**Gerrad Chibuye**
+
+Infrastructure Engineering | Networking | Linux and Systems
+
+[GitHub Profile](https://github.com/GerradChibuye)
