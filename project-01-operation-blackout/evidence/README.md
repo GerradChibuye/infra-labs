@@ -1,7 +1,32 @@
-# Evidence
+# Operation Blackout — Project Evidence
 
-Place screenshots and sanitized command-output captures here.
+## Overview
 
-Recommended evidence list is in [`../verification.md`](../verification.md). Capture evidence from the actual Packet Tracer project. Do not create illustrative screenshots that could be mistaken for real command output.
+This directory contains supporting evidence associated with the Operation Blackout enterprise campus network project.
 
-Before publishing, redact passwords, password hashes, private keys, and other secrets. The current documentation reflects the operator's reported successful tests; evidence files still need to be added from the lab.
+The evidence complements the Packet Tracer topology and technical documentation by providing visual records of the implementation and its observed behavior.
+
+## Evidence Scope
+
+The project evidence relates to the following areas:
+
+- Campus network topology.
+- VLAN segmentation and IP addressing.
+- Inter-VLAN connectivity and server reachability.
+- LACP EtherChannel operation and member-link resilience.
+- Spanning Tree Protocol configuration.
+- Trunk configuration and VLAN membership.
+- SSH-based switch management.
+- Access-port security.
+- Troubleshooting of the VLAN 20 trunking fault.
+
+The evidence is supplementary to the written documentation. The network design, addressing plan, verification results, and troubleshooting analysis are documented in the project's Markdown files.
+
+## Related Documentation
+
+- [Project Overview](../README.md)
+- [Network Topology](../topology.md)
+- [IP Addressing Plan](../addressing-plan.md)
+- [Verification Results](../verification.md)
+- [Troubleshooting Case Study](../troubleshooting.md)
+- [Configuration References](../configs/configuration-capture-guide.md)
