@@ -1,90 +1,85 @@
-# Verification and Test Plan
+# Operation Blackout — Verification Results
 
-Record actual output, date, and screenshot filename for each test before publishing. A test marked “operator reported pass” is based on the lab operator's confirmation; attach the corresponding evidence if available.
+## 1. Purpose
 
-| ID | Test | Method | Expected result | Current report |
-|---|---|---|---|---|
-| T01 | Client DHCP | Check PC IP configuration | Each client receives the planned subnet, gateway and expected lease | Pass |
-| T02 | Local gateway | Ping each client's own gateway | Replies received | Pass, per prior lab checks |
-| T03 | Inter-VLAN routing | From PC0 ping PC1, PC2 and PC3 | Replies received | Pass |
-| T04 | Server reachability | From PC0 ping `192.168.11.10` | Replies received | Pass |
-| T05 | Switch management | From PC0 ping `.34`, `.35`, `.36` in `192.168.11.32/27` | Replies received | Pass |
-| T06 | EtherChannel state | `show etherchannel summary` on SW1 and SW2 | `Po1(SU)` and both member links `(P)` after restoration | Pass |
-| T07 | EtherChannel failure | Disconnect one member, inspect channel, ping endpoint, restore cable | Po1 stays up; remaining member forwards; both members rebundle after restoration | Pass, operator confirmed |
-| T08 | STP VLAN 10 | `show spanning-tree vlan 10` on all switches | SW1 is root; SW2 root port Po1; SW3 root port Fa0/1 | Directly observed and passed |
-| T09 | STP remaining VLANs | `show spanning-tree vlan 20`, `30`, `40`, `50`, `99` on SW1 and selected access switches | Root ID corresponds to SW1 for each VLAN | Operator reports all six VLANs pass; retain outputs for evidence |
-| T10 | Trunk allow-list | `show interfaces trunk` on SW1/SW2/SW3 | Required VLANs allowed, active and forwarding on each required trunk | Pass, operator confirmed |
-| T11 | SSH | SSH from PC to each switch management address | Authenticated CLI; Telnet not permitted on configured VTY lines | Pass |
-| T12 | Port security | `show port-security` and `show port-security address` on SW2/SW3 | Maximum one MAC on each PC port; sticky addresses learned; zero violations in normal use | SW3 directly observed; operator reports all four ports configured |
-| T13 | Unused ports | `show interfaces status` | Confirmed unused ports disabled; used links remain connected | SW2/SW3 directly inspected |
-| T14 | Save configuration | `write memory` on each device | Save operation returns `[OK]` | Pass |
+This document records the operational checks performed on the Operation Blackout campus network in Cisco Packet Tracer.
 
-## Suggested final evidence commands
+The checks cover address assignment, routing, switching, management access, redundancy behavior, and access-port security.
 
-### Router
+## 2. Verification Summary
 
-```text
-show ip interface brief
-show ip route
-show running-config
-```
+| Test | Expected Result | Recorded Outcome |
+|---|---|---|
+| DHCP on PC0–PC3 | Each client receives an address from its departmental subnet | Passed |
+| Inter-VLAN connectivity | Clients in different VLANs can communicate through R1-BLACKOUT | Passed |
+| Server reachability | Departmental clients can reach Server0 | Passed |
+| Switch management reachability | Client can reach the three switch management addresses | Passed |
+| EtherChannel formation | Port-channel1 is operational and both members are bundled | Passed |
+| EtherChannel member interruption | Port-channel remains operational when one member is disconnected | Passed |
+| EtherChannel restoration | Both member links rejoin the bundle after reconnection | Passed |
+| STP root selection | SW1-CORE is configured as preferred root for the six VLANs | Configuration applied; VLAN 10 root status directly observed |
+| Trunk VLAN restrictions | Required VLANs are permitted on configured trunk links | Passed according to lab checks |
+| SSH management | SSH access works on the switches | Passed according to lab checks |
+| Port security | Protected access ports learn one client MAC and use the `restrict` violation action | Passed according to lab checks |
 
-### SW1-CORE
+## 3. DHCP Address Verification
 
-```text
-show vlan brief
-show interfaces trunk
-show etherchannel summary
-show spanning-tree vlan 10
-show spanning-tree vlan 20
-show spanning-tree vlan 30
-show spanning-tree vlan 40
-show spanning-tree vlan 50
-show spanning-tree vlan 99
-show ip interface brief
-show running-config
-```
+The following leases were observed:
 
-### SW2-ACCESS
+| Client | VLAN | Address |
+|---|---:|---|
+| PC0 | 10 | `192.168.10.11` |
+| PC1 | 20 | `192.168.10.75` |
+| PC2 | 30 | `192.168.10.139` |
+| PC3 | 40 | `192.168.10.203` |
 
-```text
-show vlan brief
-show interfaces trunk
-show etherchannel summary
-show port-security
-show port-security address
-show interfaces status
-show ip interface brief
-```
+Each address belongs to the intended subnet.
 
-### SW3-ACCESS
+## 4. Inter-VLAN and Server Connectivity
 
-```text
-show vlan brief
-show interfaces trunk
-show spanning-tree vlan 10
-show port-security
-show port-security address
-show interfaces status
-show ip interface brief
-```
+Connectivity was tested from PC0 to PC1, PC2, PC3, Server0, and the management addresses of SW1-CORE, SW2-ACCESS, and SW3-ACCESS.
 
-Do not publish passwords, password hashes, private keys, or other credentials from `show running-config`. Redact secrets before committing configuration output.
+The tests succeeded after the VLAN 20 trunking fault described in the troubleshooting case study was corrected.
 
-## Evidence naming suggestion
+## 5. EtherChannel Resilience Test
 
-```text
-evidence/
-├── 01-topology.png
-├── 02-vlan-brief-sw1.png
-├── 03-router-subinterfaces.png
-├── 04-dhcp-leases.png
-├── 05-inter-vlan-ping.png
-├── 06-etherchannel-normal.png
-├── 07-etherchannel-member-failure.png
-├── 08-etherchannel-restored.png
-├── 09-stp-root-vlan10.png
-├── 10-trunk-allowed-vlans.png
-├── 11-ssh-management.png
-└── 12-port-security.png
-```
+The LACP bundle between SW1-CORE and SW2-ACCESS was first verified as operational with both physical members bundled.
+
+One member link was then disconnected in Packet Tracer. Port-channel1 remained operational through the remaining member. After the cable was restored, both members returned to the bundle.
+
+This demonstrates link-level resilience within the simulated EtherChannel. It does not provide protection against failure of either switch or the entire port-channel path.
+
+## 6. Spanning Tree Verification
+
+SW1-CORE was configured with a preferred root priority for VLANs 10, 20, 30, 40, 50, and 99.
+
+The directly observed VLAN 10 output showed SW1-CORE as the root bridge. The user subsequently reported that the final root-selection checks passed for all six VLANs.
+
+## 7. SSH and Port Security
+
+SSH version 2 and local authentication were configured on the switches. The VTY lines were configured to accept SSH.
+
+Port security was applied to the four departmental access ports with sticky MAC learning and the `restrict` violation action. The observed SW3 port-security summary showed a maximum of one address per protected port and zero violations at the time of inspection.
+
+## 8. Evidence
+
+Place screenshots in this directory and reference their actual filenames here. Useful evidence includes:
+
+- DHCP address information from the four clients.
+- Successful inter-VLAN and server pings.
+- `show etherchannel summary` output.
+- EtherChannel status during a member-link interruption.
+- `show spanning-tree vlan 10` output.
+- STP root verification for the remaining VLANs.
+- `show interfaces trunk` output.
+- Successful SSH management access.
+- `show port-security` or `show port-security interface` output.
+- The corrected VLAN 20 trunk configuration.
+
+Do not claim a screenshot exists unless it has actually been uploaded.
+
+## 9. Conclusion
+
+The tests demonstrate that the simulated network provides departmental VLAN segmentation, inter-VLAN routing, DHCP, server and switch management reachability, LACP EtherChannel resilience, STP root selection, SSH management, and access-port security.
+
+The documented VLAN 20 fault also demonstrates the importance of verifying trunk VLAN membership during troubleshooting.
